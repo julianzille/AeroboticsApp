@@ -1,39 +1,37 @@
+/* eslint-disable no-trailing-spaces */
+/* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { Button, View, StyleSheet } from 'react-native'
-import { NavigationContainer, useNavigation, useRoute } from '@react-navigation/native'
-import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { Button, View } from 'react-native'
+import { NavigationContainer, useNavigation, useRoute, type ParamListBase } from '@react-navigation/native'
+import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack'
 import axios from 'axios'
 import MapView, { Polygon } from 'react-native-maps'
 import {
   type Farms,
   type Orchards,
   type Region,
-  type Orchs
+  type Orchs,
+  type FarmsRouteParams
 } from './interfaces'
 
 const baseUrl = 'https://sherlock.aerobotics.com/developers'
 const token = process.env.EXPO_PUBLIC_API_TOKEN
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  }
-})
-
 const HomeScreen = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>()
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
       <Button
         title="See Farms"
-        onPress={() => { navigation.navigate('farmsList') }}
+        onPress={() => { navigation.navigate('FarmListScreen') }}
       />
     </View>
   )
 }
 
 const FarmListScreen = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>()
   const [farms, setFarms] = useState<Farms>({
     count: 0,
     next: '',
@@ -61,7 +59,7 @@ const FarmListScreen = () => {
           key={farm.name}
           title={farm.name}
           onPress={() => {
-            navigation.navigate('viewFarm', {
+            navigation.navigate('ViewFarmScreen', {
               key: farm.id,
               name: '',
               farmID: farm.id
@@ -73,12 +71,9 @@ const FarmListScreen = () => {
   )
 }
 
-// Return array containing orchard's polygon object(s)
-function calculatePolygon (
-  orchards: Orchards,
-  farmid: number
-): Orchs[] {
-  const orchs = orchards.results.filter((obj) => obj.farm_id === farmid)
+// Re-format polygons' coordinates
+const calculatePolygon = (orchards: Orchards, farmID: number): Orchs[] => {
+  const orchs = orchards.results.filter((obj) => obj.farm_id === farmID)
 
   const polys: Orchs[] = orchs.map((orch) => {
     const orchID = orch.id
@@ -96,63 +91,38 @@ function calculatePolygon (
         })
       })
     }
-
     return { coords: polyg, orchID }
   })
+  
   return polys
 }
 
-// Return the region to display on the app
-function calculateRegion (
-  orchs: Orchs
-): Region {
-  const polygon = orchs.coords
+// Return the region to display
+function calculateRegion (orchs: Orchs[]): Region {
+  let maxLat: number = Number.NEGATIVE_INFINITY; let maxLong: number = Number.NEGATIVE_INFINITY
+  let minLat: number = Number.POSITIVE_INFINITY; let minLong: number = Number.POSITIVE_INFINITY
 
-  const sumLatitude = polygon.reduce(
-    (sum, currentObject) => sum + Number(currentObject.latitude),
-    0
-  )
-  const sumLongitude = polygon.reduce(
-    (sum, currentObject) => sum + Number(currentObject.longitude),
-    0
-  )
-
-  const minLatitude = polygon.reduce(
-    (min, currentObject) => Math.min(min, Number(currentObject.latitude)),
-    Number.POSITIVE_INFINITY
-  )
-  const maxLatitude = polygon.reduce(
-    (max, currentObject) => Math.max(max, Number(currentObject.latitude)),
-    Number.NEGATIVE_INFINITY
-  )
-  const minLongitude = polygon.reduce(
-    (min, currentObject) => Math.min(min, Number(currentObject.longitude)),
-    Number.POSITIVE_INFINITY
-  )
-  const maxLongitude = polygon.reduce(
-    (max, currentObject) => Math.max(max, Number(currentObject.longitude)),
-    Number.NEGATIVE_INFINITY
-  )
-
-  const latDelta = (maxLatitude - minLatitude) * 1.2
-  const lngDelta = (maxLongitude - minLongitude) * 1.2
-
-  // Calculate the average latitude and longitude.
-  const averageLatitude = sumLatitude / polygon.length
-  const averageLongitude = sumLongitude / polygon.length
+  orchs.forEach((orch) => {
+    orch.coords.forEach((coord) => {
+      maxLat = Math.max(maxLat, coord.latitude)
+      maxLong = Math.max(maxLong, coord.longitude)
+      minLat = Math.min(minLat, coord.latitude)
+      minLong = Math.min(minLong, coord.longitude)
+    })
+  })
 
   // Return the average latitude and longitude.
   return {
-    latitude: averageLatitude,
-    longitude: averageLongitude,
-    latitudeDelta: latDelta,
-    longitudeDelta: lngDelta
+    latitude: (maxLat + minLat) / 2,
+    longitude: (maxLong + minLong) / 2,
+    latitudeDelta: (maxLat - minLat) * 5,
+    longitudeDelta: (maxLong - minLong) * 5
   }
 }
 
 const ViewFarmScreen = () => {
   const mapRef = useRef<MapView>(null)
-  const farmid = useRoute().params?.farmID // Get farm's ID
+  const farmid = useRoute<FarmsRouteParams>().params?.farmID // Get farm's ID
   const [polys, setPolys] = useState<Orchs[]>([{
     orchID: 0,
     coords: [{
@@ -173,12 +143,12 @@ const ViewFarmScreen = () => {
 
     loadOrchards()
   }, [])
-  console.debug(polys)
-  const region = useMemo(() => calculateRegion(polys[0]), [polys])
-  mapRef.current?.animateToRegion(region, 2000)
+
+  const region = useMemo(() => calculateRegion(polys), [polys]) //
+  mapRef.current?.animateToRegion(region, 700)
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
       <MapView
         mapType="satellite"
         ref={mapRef}
@@ -205,9 +175,9 @@ const App = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="home" component={HomeScreen} />
-        <Stack.Screen name="farmsList" component={FarmListScreen} />
-        <Stack.Screen name="viewFarm" component={ViewFarmScreen} />
+        <Stack.Screen name="HomeScreen" component={HomeScreen} />
+        <Stack.Screen name="FarmListScreen" component={FarmListScreen} />
+        <Stack.Screen name="ViewFarmScreen" component={ViewFarmScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   )

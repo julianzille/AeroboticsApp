@@ -49,8 +49,8 @@ export interface Region {
 
 export interface Orchs {
   orchID: number
-  coords: [{
+  coords: Array<{
     latitude: number
     longitude: number
-  }]
+  }>
 }

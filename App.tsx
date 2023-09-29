@@ -7,6 +7,7 @@ import { NavigationContainer, useNavigation, useRoute, type ParamListBase } from
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack'
 import axios from 'axios'
 import MapView, { Polygon } from 'react-native-maps'
+
 import {
   type Farms,
   type Orchards,
@@ -71,11 +72,10 @@ const FarmListScreen = () => {
   )
 }
 
-// Re-format polygons' coordinates
+// Re-format a farm's orchards' polygon coordinates
 const calculatePolygon = (orchards: Orchards, farmID: number): Orchs[] => {
   const orchs = orchards.results.filter((obj) => obj.farm_id === farmID)
-
-  const polys: Orchs[] = orchs.map((orch) => {
+  const polygons: Orchs[] = orchs.map((orch) => {
     const orchID = orch.id
     const poly = orch?.polygon
     const polyg: Array<{ latitude: number, longitude: number }> = []
@@ -94,7 +94,7 @@ const calculatePolygon = (orchards: Orchards, farmID: number): Orchs[] => {
     return { coords: polyg, orchID }
   })
   
-  return polys
+  return polygons
 }
 
 // Return the region to display
@@ -140,7 +140,6 @@ const ViewFarmScreen = () => {
       })
       setPolys(calculatePolygon(response.data, farmid))
     }
-
     loadOrchards()
   }, [])
 

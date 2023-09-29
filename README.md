@@ -11,4 +11,4 @@ This app is developed to run using the following packages packages and dependenc
 
 Run ```npm install [package-name]@[version-number]``` to install the relevant package.
 
-NB: an API token (stored in .env) is required for full functionality. Contact 
+NB: an API token (stored in a .env file) is required for full functionality. Contact 

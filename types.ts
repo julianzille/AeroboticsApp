@@ -34,10 +34,11 @@ export interface Orchard {
 }
 
 export interface FarmsRouteParams {
-  key: ''
-  name: ''
-  farmID: number
-  params: any
+  key: string
+  name: string
+  params: {
+    farmID: number
+  }
 }
 
 export interface Region {
